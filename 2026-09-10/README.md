@@ -24,6 +24,7 @@ AI backend는 새 입력과 지금까지 확정된 Decision, SoT를 함께 분�
 
 ### 예시 입력
 
+```text
 입력 이벤트의 개수를 세는 8비트 counter를 설계한다.
 
 Clock rising edge에서 event=1이면 count를 1 증가시킨다.
@@ -31,6 +32,7 @@ Clock rising edge에서 event=1이면 count를 1 증가시킨다.
 
 Reset 방식, count가 255일 때 다음 event를 처리하는 방법,
 overflow 알림 출력이 필요한지는 아직 정하지 않았다.
+```
 
 이 입력에서 다음은 이미 정해져 있다.
 
@@ -162,11 +164,13 @@ C. Software가 clear할 때까지 sticky 출력
 
 REQ는 구현 방법보다 사용자가 기대하는 동작을 정의한다.
 
+```text
 REQ / Atomic
 - Rising edge에서 event=1이면 count를 1 증가시켜야 한다.
 - Count는 8비트 값으로 제공해야 한다.
 - Count가 255이면 추가 event에도 255를 유지해야 한다.
 - Overflow event가 발생하면 한 cycle 동안 알려야 한다.
+```
 
 ### ARCH: 구조, 인터페이스와 설계 정책
 
@@ -198,6 +202,7 @@ MOD / Container: event_counter module
 
 VER는 무엇을 확인할지만 적는 것이 아니라 테스트가 끝나고 PASS/FAIL을 판단할 수 있도록 조건과 expected result를 정의한다.
 
+```text
 VER / Atomic: Reset test
 - reset_n=0으로 rising edge를 한 번 발생시킨다.
 - 다음 cycle에 count=0, overflow=0인지 확인한다.
@@ -211,6 +216,7 @@ VER / Atomic: Saturation test
 - event 한 번 후 count=255인지 확인한다.
 - event를 한 번 더 넣어도 count=255인지 확인한다.
 - 두 번째 event에서 overflow가 정확히 한 cycle만 1인지 확인한다.
+```
 
 상위 Stage의 계약은 하위 Stage의 근거가 된다.
 
