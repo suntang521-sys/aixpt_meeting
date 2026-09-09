@@ -336,3 +336,57 @@ SoT Explorer에서 현재 설계와 근거 확인
 ```
 
 HWD SoT Builder가 만들려는 것은 한 번 생성하고 버리는 RTL이 아니다. 요구사항, 설계 결정, 구현과 검증이 함께 변경될 수 있는 추적 가능한 설계 기준이다.
+
+## 실제 프로그램 화면
+
+아래 화면은 HWD SoT Builder를 별도 데모 workspace에서 실행해 주요 흐름을 순서대로 촬영한 것이다.
+
+### 1. 새 프로젝트와 Stage
+
+프로젝트를 만들면 상단에서 `REQ → ARCH → MOD → VER` 진행 상태와 현재 작업 위치를 확인할 수 있다.
+
+![새 프로젝트와 4개 Stage](./screenshots/01-project-start.png)
+
+### 2. 요구사항 입력
+
+텍스트 또는 Markdown으로 요구사항과 설계 의도를 입력한다. 입력 내용은 먼저 Pending Input으로 보존된 뒤 Update 과정에서 분석된다.
+
+![8비트 counter 요구사항 입력](./screenshots/02-requirements-input.png)
+
+### 3. Decision Map 제안 검토
+
+AI backend가 현재 Stage에 필요한 Decision Branch와 Leaf 구조를 제안한다. 사용자는 적용 전에 구조를 검토하고 승인, 재생성 또는 수정 요청을 할 수 있다.
+
+![Decision Map 제안](./screenshots/03-decision-map-proposal.png)
+
+### 4. Decision Leaf 질문 카드
+
+Leaf에 도달하면 구체적인 질문과 선택지가 표시된다. 사용자는 추천안을 선택하거나 다른 선택과 추가 의견을 입력할 수 있다.
+
+![Decision Leaf 질문 카드](./screenshots/04-question-card.png)
+
+### 5. Stage checkpoint
+
+한 Stage의 작업이 끝나면 닫힌 Decision 수, 추가·변경된 SoT, 충돌 여부를 확인한 뒤 다음 Stage로 이동한다.
+
+![Requirements Stage checkpoint](./screenshots/05-stage-checkpoint.png)
+
+### 6. 확정된 Decision Map
+
+Decision Map 화면에서는 확정된 Branch와 Leaf, 현재 경로, 연결된 canonical SoT를 확인할 수 있다.
+
+![확정된 Decision Map](./screenshots/06-decision-map.png)
+
+### 7. SoT Explorer
+
+SoT Explorer는 canonical SoT를 Container와 Atomic Tree로 보여준다. 선택한 SoT의 본문, Source, Decision, relation과 Source Fact coverage도 함께 확인할 수 있다.
+
+![SoT Explorer](./screenshots/07-sot-explorer.png)
+
+### 8. 프로젝트 상태
+
+Status 화면은 현재 Stage와 Decision 위치, 닫힌·열린 Decision, Source Fact coverage를 한곳에 보여준다. 점수보다 현재 위치와 남은 작업을 확인하기 위한 화면이다.
+
+![프로젝트 Status](./screenshots/08-status.png)
+
+> 화면과 workflow는 실제 프로그램이다. 이 캡처는 deterministic fake backend의 `success` 시나리오를 사용했으므로 질문과 SoT 문구는 데모 fixture의 예시이며, 실제 AI가 8비트 counter를 분석한 결과를 의미하지는 않는다.
