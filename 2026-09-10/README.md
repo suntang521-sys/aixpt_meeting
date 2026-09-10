@@ -52,6 +52,8 @@ overflow 알림 출력이 필요한지는 아직 정하지 않았다.
 
 ## 2. REQ → ARCH → MOD → VER 순서로 진행한다
 
+Stage는 하나의 설계를 요구사항, 구조, RTL 구현, 검증의 관점으로 나누어 차례로 구체화하는 작업 구간이다. 각 Stage는 앞에서 확정된 SoT를 근거로 다음 수준의 SoT를 만들며, 사용자가 현재 어떤 종류의 설계 작업을 진행하고 있는지도 보여준다.
+
 현재 구현은 네 Stage로 설계를 구체화한다.
 
 ```text
@@ -157,6 +159,8 @@ C. Software가 clear할 때까지 sticky 출력
 이 답은 단순한 대화 기록이 아니라 확정된 Decision으로 저장된다. AI backend는 원문과 이 Decision을 근거로 SoT를 만든다.
 
 ## 5. 각 Stage에서 정의하는 내용과 SoT 예시
+
+각 Stage의 결과는 `Container`와 `Atomic` 두 종류의 SoT로 정리된다. Container는 관련 설계 영역과 하위 SoT를 묶는 상위 단위다. Atomic은 독립적으로 검토하고 변경하고 검증할 수 있는 실제 설계 계약이며, 하위 SoT를 갖지 않는다.
 
 아래 예시는 같은 8비트 event counter가 Stage를 지나며 어떻게 구체화되는지 보여준다.
 
