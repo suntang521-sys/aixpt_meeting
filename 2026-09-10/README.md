@@ -319,30 +319,27 @@ ARCH: Reset timing이 결정되지 않음
 
 관련 Stage와 Decision Map을 다시 열어 설계를 보완한 뒤 아티팩트를 다시 생성한다.
 
-### 검증 방법이 잘못된 경우
-
-테스트가 필요한 상태에 도달하지 못하거나 expected value가 틀렸다면 VER 계약과 테스트 방법을 고친다. DUT가 테스트에 맞도록 요구사항을 변경해서는 안 된다.
-
 ## 전체 흐름
 
 ```text
-Source 입력
-  ↓
-명시된 사실을 SoT로 반영
-  ↓
-Decision Map의 여러 Branch를 상위부터 승인하며 전개
-  ↓
-여러 Leaf의 질문 카드에 답해 설계 선택 확정
-  ↓
-REQ → ARCH → MOD → VER SoT 생성
-  ↓
-SoT Explorer에서 현재 설계와 근거 확인
-  ↓
-완성된 SoT 세트에서 문서·RTL·검증 아티팩트 생성
-  ↓
-검증 실패 원인을 SoT·생성·검증 계층으로 나눠 수정
-  ↓
-요구 변경 시 영향받은 Stage를 다시 열고 반복
+[사람] 요구사항과 설계 문서 입력
+          ↓
+[AI] 입력 분석, 명시된 사실의 SoT 반영,
+     Decision Map과 질문 제안
+          ↓
+[사람] Decision Map 구조 승인,
+       Leaf 질문에 답해 설계 선택 확정
+          ↓
+[AI] REQ → ARCH → MOD → VER SoT 생성과 의미 검토
+          ↓
+[사람] Stage checkpoint와 SoT Explorer에서 결과 확인
+          ↓
+[AI] 완성된 SoT 세트에서 문서·RTL·검증 아티팩트 생성
+          ↓
+[사람] 생성된 아티팩트와 검증 결과 확인
+          ↓
+[사람 + AI] 요구 변경이나 문제 발생 시
+            영향받은 Stage를 다시 열고 반복
 ```
 
 HWD SoT Builder가 만들려는 것은 한 번 생성하고 버리는 RTL이 아니다. 요구사항, 설계 결정, 구현과 검증이 함께 변경될 수 있는 추적 가능한 설계 기준이다.
