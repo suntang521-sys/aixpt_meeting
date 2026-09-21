@@ -83,44 +83,109 @@ AI 검토자는 작성자의 추론·대화 이력을 받지 않는다. `read_re
 
 ## 3. 모듈별 Agentic Macro Loop 구성 테이블
 
-### Requirements — 요구사항 분석
+각 표의 **행은 실행 단계**, **열은 코드·AI·Skill·Tool의 역할**이다. 아래는 제안이 아니라 현재 구현이다.
 
-| 구성 | 현재 구현 |
-| --- | --- |
-| Input | 사용자 원문과 제공된 근거 |
-| Context Build | **코드:** 원문 블록·절·근거 인덱스와 작성/검토 역할별 컨텍스트 구성 |
-| Generate | **AI:** 의미 추출·분류. 별도의 검토 작업 단위에서는 **코드**가 검토할 현재 후보를 고정 |
-| Validate | **코드:** 추출 형식·근거 검사. **AI:** 전체 또는 절별 의미 검토, 분할 입력의 최종 CROSS 검토. **코드:** 검토·PATCH의 형식과 대상 일치 검사 |
-| Diagnose | **코드:** 추출 오류는 LOCAL 수정, 유효한 PATCH는 의미 수정으로 분류. 잘못된 검토 출력은 중지 |
-| Repair / Regenerate | **AI:** 잘못된 추출 결과 수정. **코드:** 검증된 PATCH 적용 후 재검토. CROSS 수정으로 영향받은 절도 다시 검토 |
-| Skill / Tool | 분석·분석 검토·CROSS 검토 스킬 / 읽기 전용 `read_records` |
-| Loop | 짧은 입력: 추출 → 전체 검토. 긴 입력: 절별 추출·검토 → CROSS. LOCAL 2회·SEMANTIC 2회·CROSS 2회, 총 6회 한도를 작업 전체가 공유 |
-| Output | 근거와 stage가 연결된 `ACCEPTED` 분석 목록 또는 진단. SoT 정본을 직접 저장하지 않음 |
+- **코드**: 컨텍스트 조립, 형식 검사, 분기, 저장 등 프로그램이 수행하는 일.
+- **AI**: 실제 LLM 호출로 수행하는 일. `—`는 해당 단계에 AI 호출이 없다는 뜻.
+- **Skill**: AI에게 주입하는 작업 지침 파일. 별도로 실행되는 에이전트나 Tool이 아니다. Context Build에서는 코드가 삽입하고, AI 호출 시 적용한다.
+- **Tool**: AI가 호출할 수 있는 읽기 전용 `read_records`. **필요 시**는 근거가 부족하거나 재확인이 필요할 때 호출 가능하다는 뜻이며, 매번 호출하지는 않는다. 일반 코드 함수는 Tool로 표시하지 않는다.
+- **완료 반환** 행은 성공 이후의 코드 처리이며, 별도의 AI 작업이 아니다.
 
-### SoT — 초안 준비 / 단계 전체 검토
+### 3.1 Requirements — 요구사항 분석
 
-| 구성 | PREPARE: ROOT / EXPAND / REFINE | REVIEW_STAGE |
-| --- | --- | --- |
-| Input | 현재 범위, 분석 목록, 관련 SoT·근거·미정 사항, 잠정 답변·코멘트 | 승인된 stage 전체, 원문·확정 답변, 상위 stage 근거, 커버리지·Close 기준 |
-| Context Build | **코드:** 편집 가능 범위·관련 책임·근거를 묶고 stage별 작성/검토 컨텍스트 구성 | **코드:** 승인된 전체 stage와 검토 기준을 묶음 |
-| Generate | **AI:** 범위에 맞는 SoT 변경 초안 작성 | **코드:** 변경 없는 승인 스냅샷을 검토 대상으로 구성. 작성 AI 호출 없음 |
-| Validate | **코드:** 형식·범위·참조·규칙 보존 검사 → **AI:** 의미·책임·커버리지 검토 → **코드:** 검토 결과 검사·판정 | **AI:** 단계 전체의 완결성·일관성 검토 → **코드:** 검토 근거·연결·기준 충족 검사·판정 |
-| Diagnose | **코드:** 초안 오류와 검토 출력 오류를 구분하고 해당 수정 대상으로 전달 | **코드:** 검토 출력 오류는 교정 대상으로 전달. 유효한 미완료 판정은 결과로 반환 |
-| Repair / Regenerate | **AI:** 잘못된 초안 또는 검토 출력 수정. **코드:** MOD/VER의 미승인 ROOT에서 검증된 검토에 따른 제한된 참조 메타데이터 보완. 초안 변경 시 새로운 독립 검토 | **AI:** 잘못된 검토 출력만 수정·재검증. 승인된 SoT를 자동 재작성하지 않음 |
-| Skill / Tool | stage별 SoT 작성·검토 스킬 / 읽기 전용 `read_records` | stage별 SoT 검토 스킬 / 읽기 전용 `read_records` |
-| Loop | LOCAL 2회는 작성·검토 역할이 공유, SEMANTIC 2회는 초안 간 공유 | 검토 출력의 LOCAL 교정. `ready: false`를 강제로 통과시키는 생성 루프 없음 |
-| Output | `REVIEWED` 제안: 노드 변경·규칙 이동·미정 사항·커버리지·필요 질문·남은 작업 → 탑이 질문 또는 승인으로 분기 | `STAGE_REVIEW(ready, checks)` → 탑이 Close 승인 또는 미완료 처리로 분기 |
+입력: 사용자 원문·제공된 근거 → 출력: 근거·stage가 연결된 분석 목록 또는 진단.
 
-### Decision — 질문 생성 / 답변 해석
+실제로는 **추출 Macro → 검토 Macro**로 구성된다.
+짧은 입력은 전체를, 긴 입력은 절별로 추출·검토한 뒤 최종 CROSS 검토를 수행한다.
 
-| 구성 | GENERATE | INTERPRET |
-| --- | --- | --- |
-| Input | 현재 초안, 소유 범위가 정해진 미정 사항, 근거, 질문 수정 코멘트 | 정확한 카드 버전, 실제 선택·답변·코멘트, 이전 답변과 관련 근거 |
-| Context Build | **코드:** 질문할 사항·알려진 조건·근거와 생성/검토 컨텍스트 구성 | **코드:** 원문 답변·선택지·기존 제약과 해석/검토 컨텍스트 구성 |
-| Generate | **AI:** 질문·선택지·선택적 추천을 포함한 카드 생성 | **AI:** 답변의 의미, 남은 모호함, 승인된 계약 변경 여부 분석 |
-| Validate | **코드:** 형식·소유 범위·근거 검사 → **AI:** 질문의 충실성·답변 가능성 검토 → **코드:** 검토 출력 검사 | **코드:** 형식·버전·근거 검사 → **AI:** 실제 답변 충실성·모호함·제약 보존 검토 → **코드:** 검토 출력 검사 |
-| Diagnose | **코드:** 카드 오류와 검토 출력 오류를 구분 | **코드:** 해석 오류와 검토 출력 오류를 구분. 정당한 추가 질문·변경 요청은 실패로 취급하지 않음 |
-| Repair / Regenerate | **AI:** 카드 또는 검토 출력 수정. 카드 변경 시 새로운 독립 검토 | **AI:** 해석 또는 검토 출력 수정. 해석 변경 시 새로운 독립 검토 |
-| Skill / Tool | 질문 생성·질문 검토 스킬 / 읽기 전용 `read_records` | 답변 해석·답변 검토 스킬 / 읽기 전용 `read_records` |
-| Loop | 작업 내 LOCAL 2회·SEMANTIC 2회 공유 | 작업 내 LOCAL 2회·SEMANTIC 2회 공유. 사람의 추가 답변은 탑에서 받음 |
-| Output | 검토된 `CARD_SET` → 사람에게 질문 | 검토된 `ANSWER_SET`: `INTERPRETED` → SoT 준비, `NEEDS_CLARIFICATION` → 재질문, `CHANGE_REQUEST` → Impact 진단 |
+**A. 추출 Macro**
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 원문 블록·절·근거 인덱스와 작성 컨텍스트 조립 | — | `skill.md` 삽입 | — | 원문 → 작성 컨텍스트 |
+| Generate | 호출·응답 기록 | 의미 추출·분류 | `skill.md` | `read_records`: 필요 시 | 컨텍스트 → 분석 후보 JSON |
+| Validate | 형식·근거·절 범위 검사; 필요한 미전달 근거 보충 | 근거 보충 시에만 재추출 | 재추출 시 `skill.md` | 재추출 시 사용 가능 | 후보 → 통과 또는 오류 |
+| Diagnose | 오류를 LOCAL 수정 또는 중지로 분기 | — | — | — | 오류 → 수정 지시 |
+| Repair / Regenerate | 오류 피드백 조립 | 잘못된 추출 결과 수정 | `skill.md` | `read_records`: 필요 시 | 오류·후보 → 수정 후보 → Validate |
+| 완료 반환 | 후보를 검토 Macro로 전달 | — | — | — | 추출 통과 후보 → 검토 대상 |
+
+**B. 검토 Macro — 전체 / 절별 / CROSS**
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 작성 대화와 분리된 검토 컨텍스트 조립 | — | `review.md` 또는 `cross-review.md` 삽입 | — | 후보·근거 → 검토 컨텍스트 |
+| Generate | 현재 후보를 검토 대상으로 고정; 새 후보 생성 없음 | — | — | — | 현재 후보 → 고정된 검토 대상 |
+| Validate | 검토 JSON·근거·PATCH 대상 검사 | 의미·누락·분류 검토; 필요 시 수정 PATCH 제안 | `review.md` / CROSS는 `cross-review.md` | `read_records`: 필요 시 | 후보 → 통과 / PATCH / 진단 |
+| Diagnose | 유효 PATCH는 수정으로, 잘못된 검토 출력은 중지로 분기 | — | — | — | 검토 결과 → 수정 또는 중지 |
+| Repair / Regenerate | 검증된 PATCH 적용; 영향받은 절의 검토 무효화 | — | — | — | PATCH·후보 → 수정 후보 → Validate |
+| 완료 반환 | 필요한 절별·CROSS 검토가 모두 끝나면 `ACCEPTED` 반환 | — | — | — | 검토 통과 목록 → 탑 |
+
+공유 한도: LOCAL 2회·SEMANTIC 2회·CROSS 2회, 총 6회. 절·페이지마다 한도를 새로 받지 않는다.
+CROSS 수정이 절에 영향을 주면 해당 절을 다시 검토한 뒤 CROSS로 돌아간다.
+
+### 3.2 SoT — PREPARE (ROOT / EXPAND / REFINE)
+
+입력: 현재 범위·분석 목록·관련 SoT·근거·잠정 답변·코멘트 → 출력: 검토된 SoT 제안 또는 추가 입력 진단.
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 편집 범위·관련 책임·근거·답변을 묶음 | — | stage별 작성 Skill 삽입 | — | 범위·근거 → 작성 컨텍스트 |
+| Generate | 호출·응답 기록 | 상위 구성 / 하위 확장 / 범위 보완 초안 작성 | stage별 작성 Skill | `read_records`: 필요 시 | 컨텍스트 → SoT 초안 JSON |
+| Validate | 형식·범위·참조·규칙 보존 검사; 독립 검토 컨텍스트 구성; 검토 결과 검사 | 의미·책임·커버리지 검토 | stage별 검토 Skill | `read_records`: 필요 시 | 초안 → 통과 또는 오류·수정 의견 |
+| Diagnose | 초안 오류 / 검토 오류와 LOCAL / SEMANTIC 구분 | — | — | — | 실패 → 수정 대상·피드백 |
+| Repair / Regenerate | 피드백 조립; MOD/VER 미승인 ROOT의 제한된 참조 메타데이터는 코드 보완 가능 | 코드 보완 대상이 아니면 초안 또는 검토 출력 수정 | 수정 대상의 작성 / 검토 Skill | AI 수정 시 `read_records`: 필요 시 | 실패 결과 → 수정 결과 → Validate |
+| 완료 반환 | 제안을 입력·범위에 연결해 `REVIEWED` 반환; 정본 저장은 하지 않음 | — | — | — | 검토 통과 제안 → 탑의 질문 / 사람 승인 |
+
+공유 한도: LOCAL 2회·SEMANTIC 2회. **AI 수정이든 코드 보완이든 초안이 바뀌면 새 독립 검토**를 받는다.
+
+### 3.3 SoT — REVIEW_STAGE (단계 전체 검토)
+
+입력: 승인된 stage 전체·원문·답변·상위 stage 근거·Close 기준 → 출력: `STAGE_REVIEW(ready, checks)` 또는 진단.
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 승인된 stage와 검토용 근거 묶음 준비 | — | 검토 Skill은 Validate의 컨텍스트 구성 때 삽입 | — | 승인 상태 → 검토용 묶음 |
+| Generate | 승인된 상태를 변경 없는 검토 스냅샷으로 구성 | — | — | — | 승인 상태 → 읽기 전용 스냅샷 |
+| Validate | 독립 검토 컨텍스트 구성; 검토 근거·연결·Close 기준 검사 | 단계 전체 완결성·일관성 검토 | stage별 검토 Skill | `read_records`: 필요 시 | 스냅샷 → 준비됨 / 미완료 / 오류 |
+| Diagnose | 잘못된 검토 출력만 교정 대상으로 분류 | — | — | — | 검토 오류 → 교정 지시 |
+| Repair / Regenerate | 오류 피드백 조립; 승인된 SoT는 유지 | 잘못된 검토 출력 수정 | stage별 검토 Skill | `read_records`: 필요 시 | 검토 오류 → 수정 검토 → Validate |
+| 완료 반환 | `ready`·검사 결과를 탑에 전달 | — | — | — | 검토 결과 → Close 승인 / 미완료 처리 |
+
+LOCAL 교정은 2회. 유효한 `ready: false`는 정상 출력이며, SoT를 자동 수정하거나 `true`가 될 때까지 반복하지 않는다.
+
+### 3.4 Decision — GENERATE (질문 카드 생성)
+
+입력: 현재 초안·소유 범위가 정해진 미정 사항·근거·질문 코멘트 → 출력: 검토된 `CARD_SET` 또는 진단.
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 질문 대상·기존 조건·근거 묶음 구성 | — | 질문 생성 Skill 삽입 | — | 미정 사항·근거 → 생성 컨텍스트 |
+| Generate | 호출·응답 기록 | 질문·선택지·선택적 추천 생성 | `generate.md` 계열 | `read_records`: 필요 시 | 컨텍스트 → 카드 후보 JSON |
+| Validate | 형식·소유 범위·근거 검사; 독립 검토 컨텍스트 구성; 검토 출력 검사 | 질문의 충실성·답변 가능성 검토 | `generate-review.md` 계열 | `read_records`: 필요 시 | 카드 후보 → 통과 또는 수정 의견 |
+| Diagnose | 카드 오류 / 검토 오류와 LOCAL / SEMANTIC 구분 | — | — | — | 실패 → 수정 대상·피드백 |
+| Repair / Regenerate | 해당 역할의 피드백·컨텍스트 구성 | 카드 또는 검토 출력 수정 | 해당 역할의 생성 / 검토 Skill | `read_records`: 필요 시 | 실패 결과 → 수정 결과 → Validate |
+| 완료 반환 | 카드 세트를 입력·버전에 연결해 반환 | — | — | — | `CARD_SET` → 탑 → 사람의 답변 |
+
+공유 한도: LOCAL 2회·SEMANTIC 2회. 카드가 바뀌면 새 독립 검토를 받는다.
+
+### 3.5 Decision — INTERPRET (답변 해석)
+
+입력: 정확한 카드 버전·실제 선택/답변/코멘트·이전 답변·관련 근거 → 출력: 검토된 `ANSWER_SET` 또는 진단.
+
+| 단계 | 코드 역할 | AI 역할 | Skill | Tool | 입력 → 출력 |
+| --- | --- | --- | --- | --- | --- |
+| Context Build | 원문 답변·선택지·기존 제약을 묶음 | — | 답변 해석 Skill 삽입 | — | 카드·답변 → 해석 컨텍스트 |
+| Generate | 호출·응답 기록 | 답변 의미·남은 모호함·승인 계약 변경 여부 분석 | `interpret.md` 계열 | `read_records`: 필요 시 | 컨텍스트 → 해석 후보 JSON |
+| Validate | 형식·버전·근거 검사; 독립 검토 컨텍스트 구성; 검토 출력 검사 | 실제 답변 충실성·모호함·제약 보존 검토 | `interpret-review.md` 계열 | `read_records`: 필요 시 | 해석 후보 → 통과 또는 수정 의견 |
+| Diagnose | 해석 오류 / 검토 오류와 LOCAL / SEMANTIC 구분 | — | — | — | 실패 → 수정 대상·피드백 |
+| Repair / Regenerate | 해당 역할의 피드백·컨텍스트 구성 | 해석 또는 검토 출력 수정 | 해당 역할의 해석 / 검토 Skill | `read_records`: 필요 시 | 실패 결과 → 수정 결과 → Validate |
+| 완료 반환 | 해석 결과를 입력·카드 버전에 연결해 반환 | — | — | — | `ANSWER_SET` → SoT 준비 / 재질문 / Impact 진단 |
+
+공유 한도: LOCAL 2회·SEMANTIC 2회. 해석이 바뀌면 새 독립 검토를 받는다.
+`NEEDS_CLARIFICATION`·`CHANGE_REQUEST`는 유효한 결과이며, 사람의 추가 답변은 Macro 밖의 탑에서 받는다.
+
+**Skill 파일 선택 규칙**
+
+- Requirements: 해당 모듈의 `skill.md`, `review.md`, `cross-review.md`.
+- SoT: REQ는 `skill.md` / `review.md`; ARCH·MOD·VER는 각각 `arch-`·`mod-`·`ver-` 접두사를 붙인다.
+- Decision: REQ는 표의 파일명 그대로 사용하며, ARCH·MOD·VER는 같은 접두사를 붙인다.
