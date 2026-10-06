@@ -632,32 +632,23 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
       actual: "1 → 1 → 3 → 3 순서로, 같은 요청자가 두 번 연속 허용됨 · cycle 214",
       cause: "RTL이 포인터를 허용된 요청자 기준이 아니라 1씩만 증가시킴. 설계 기준(SoT)은 올바름",
       del: ["             ptr <= ptr + 1'b1;"], add: ["             ptr <= owner + 1'b1;"] },
-    change: { node: "중재 정책",
-      rules: ["여러 요청이 동시에 있으면 라운드로빈 순서로 하나를 허용한다.", "순서는 마지막으로 허용된 요청자의 다음 번호부터 시작한다.", "같은 요청자가 연속으로 허용되지 않도록 공정성을 보장한다."],
-      request: "긴급 요청 추가: urgent[i] = 1인 요청은 라운드로빈보다 먼저 허용한다. 긴급 요청끼리는 라운드로빈을 따른다.",
-      before: "여러 요청이 동시에 있으면 라운드로빈 순서로 하나를 허용한다.",
-      after: "긴급 요청(urgent)이 있으면 긴급 요청 중에서 라운드로빈으로 먼저 허용한다. 긴급 요청이 없으면 기존 라운드로빈을 따른다.",
-      hit: [["REQ", "중재 정책", "요청한 변경 · 긴급 요청 우선"], ["REQ", "요청·허용 인터페이스", "urgent[3:0] 입력 포트 추가"], ["ARCH", "우선순위 선택", "긴급 요청을 먼저 고르는 단계 추가"], ["MOD", "rr_arbiter", "포트 · 선택 규칙 갱신"], ["VER", "공정성 · 연속 요청", "긴급 요청이 섞일 때의 기대값 명시"], ["VER", "새 시나리오", "긴급 요청 우선 확인 추가"]],
-      keep: [["REQ", "버스 점유와 해제"], ["REQ", "허용 타이밍"], ["REQ", "리셋과 초기 우선순위"], ["ARCH", "요청 마스킹"], ["ARCH", "점유 상태 관리"], ["ARCH", "출력 레지스터"], ["VER", "단일 요청"], ["VER", "점유 중 요청"]],
-      newScenario: { title: "긴급 요청 우선", rule: "일반 요청과 긴급 요청이 동시에 있으면 긴급 요청자가 먼저 허용되는지 확인한다." },
-      reapprove: "긴급 요청 우선 변경이 반영됐다." },
     graph: {
       lanes: [
         ["REQ", "#3b6be0", ["요구사항", "요청·허용 인터페이스", "중재 정책", "버스 점유와 해제", "허용 타이밍", "리셋과 초기 우선순위"]],
         ["ARCH", "#8550d6", ["아비터 구조", "중재 제어", "· 요청 마스킹", "· 우선순위 선택", "· 점유 상태 관리", "우선순위 포인터", "출력 레지스터"]],
         ["MOD", "#0d978a", ["rr_arbiter"]],
-        ["VER", "#d27a1f", ["rr_arbiter 검증", "단일 요청", "동시 요청 순서", "점유 중 요청", "공정성 · 연속 요청", "리셋", "긴급 요청 우선"]],
+        ["VER", "#d27a1f", ["rr_arbiter 검증", "단일 요청", "동시 요청 순서", "점유 중 요청", "공정성 · 연속 요청", "리셋"]],
       ],
       edges: [
         ["REQ:0", "REQ:1", "h"], ["REQ:0", "REQ:2", "h"], ["REQ:0", "REQ:3", "h"], ["REQ:0", "REQ:4", "h"], ["REQ:0", "REQ:5", "h"],
         ["ARCH:0", "ARCH:1", "h"], ["ARCH:1", "ARCH:2", "h"], ["ARCH:1", "ARCH:3", "h"], ["ARCH:1", "ARCH:4", "h"], ["ARCH:0", "ARCH:5", "h"], ["ARCH:0", "ARCH:6", "h"],
-        ["VER:0", "VER:1", "h"], ["VER:0", "VER:2", "h"], ["VER:0", "VER:3", "h"], ["VER:0", "VER:4", "h"], ["VER:0", "VER:5", "h"], ["VER:0", "VER:6", "h"],
+        ["VER:0", "VER:1", "h"], ["VER:0", "VER:2", "h"], ["VER:0", "VER:3", "h"], ["VER:0", "VER:4", "h"], ["VER:0", "VER:5", "h"],
         ["REQ:1", "ARCH:6", "x"], ["REQ:2", "ARCH:2", "x"], ["REQ:2", "ARCH:3", "x"], ["REQ:2", "ARCH:5", "x"], ["REQ:3", "ARCH:4", "x"], ["REQ:4", "ARCH:6", "x"],
         ["ARCH:2", "MOD:0", "x"], ["ARCH:3", "MOD:0", "x"], ["ARCH:4", "MOD:0", "x"], ["ARCH:5", "MOD:0", "x"], ["ARCH:6", "MOD:0", "x"],
         ["MOD:0", "VER:0", "v"],
       ],
-      focus: ["REQ:2", "ARCH:3", "MOD:0", "VER:0", "VER:2", "VER:6"],
-      selLabel: "REQ 중재 정책 → ARCH 우선순위 선택 → MOD rr_arbiter → VER 동시 요청 순서 · 긴급 요청 우선",
+      focus: ["REQ:2", "ARCH:3", "MOD:0", "VER:0", "VER:2"],
+      selLabel: "REQ 중재 정책 → ARCH 우선순위 선택 → MOD rr_arbiter → VER 동시 요청 순서",
       selSay: "'중재 정책'을 고르면, 이 의도가 <b>어디까지 이어지는지</b> 바로 보입니다" },
   };
 
@@ -677,7 +668,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
       <div class="close-docs"><div class="doc"><h3>${esc(docTitle)}</h3></div><ul class="rules">${rules.map((r, i) => `<li${r[1] ? ' style="background:var(--you-soft)"' : ""}><span>${pad2(i + 1)}</span><div>${esc(r[0])}${r[1] ? ` <span class="chip" style="background:var(--you-soft);color:var(--you-ink)">${r[1]}</span>` : ""}</div></li>`).join("")}</ul></div></div>`,
     dockTitle: "전체 문서를 읽고 판단해 주세요", dockDetail: "승인하면 설계 기준(SoT)으로 확정돼요", actions: closeActions });
 
-  const TOTAL = 9;
+  const TOTAL = 8;
   async function intro(n, title, desc) {
     screen.insertAdjacentHTML("beforeend", `<div class="rp-intro"><div class="rp-intro-card appear"><span>STEP ${n} / ${TOTAL}</span><h2>${title}</h2><p>${desc}</p></div></div>`);
     say(`<b>STEP ${n}</b> · ${title}`);
@@ -687,7 +678,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
   }
   const C = [];
   C.push({ name: "1. 원문 입력", async run() {
-    screen.innerHTML = `<div class="rp-title"><span>HWD 하네스 기능 둘러보기</span><h1>${EX.title}</h1><p>짧은 원문에서 시작해, 질문·승인·검증·수정까지</p><small style="color:var(--rail-muted);font-size:13px">시연용 가상 예시 · 일부 화면은 설명을 위해 단순화했습니다</small></div>`;
+    screen.innerHTML = `<div class="rp-title"><span>HWD 하네스 기능 둘러보기</span><h1>${EX.title}</h1><p>짧은 원문에서 시작해, 질문·승인·검증·복구까지</p><small style="color:var(--rail-muted);font-size:13px">시연용 가상 예시 · 일부 화면은 설명을 위해 단순화했습니다</small></div>`;
     await sleep(2600);
     await intro(1, "원문 입력", "짧고 불완전한 설계 원문을 넣습니다");
     say("몇 줄짜리 설계 원문으로 시작합니다");
@@ -941,50 +932,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
     say(`${n}개 시나리오 <b>모두 통과</b>`);
     await sleep(2000);
   }});
-  C.push({ name: "8. 노드 수정 · 재검증", async run() {
-    await intro(8, "노드 수정 · 재검증", "생각이 바뀌면 승인된 문서에서 항목을 골라 수정하고, 바뀐 단계부터 다시 승인·검증합니다");
-    const X = EX.change, ni = REQ.findIndex(r => r.title === X.node);
-    say("설계 도중 생각이 바뀌었습니다. <b>문서에서 노드를 골라</b> 바로 수정을 요청합니다");
-    shell({ done: 7, active: 7, tone: "", title: "검증 완료", sub: "", view: "doc",
-      inspector: inspector("REQ", ["REQ", "ARCH", "MOD", "VER"], [{ id: "r-root", t: EX.req.root, depth: 0, dot: "drafted", kids: true }, ...REQ.map((r, i) => ({ id: "r" + i, t: r.title, depth: 1, dot: "drafted", sel: i === ni }))]) },
-      desk({ eyebrow: "문서", crumbs: `REQ · <b>${esc(X.node)}</b>`, title: esc(X.node),
-        body: `<div class="reader" id="rd"><span class="tag req" style="justify-self:start">REQ · 승인됨</span><p class="role" style="color:var(--ink-2)">${esc(REQ[ni].role)}</p>
-            <ul class="rules">${X.rules.map((r, i) => `<li><span>${pad2(i + 1)}</span><div>${esc(r)}</div></li>`).join("")}</ul>
-            <div id="edit"><button id="open">✎ 자연어로 내용 수정</button></div></div>`,
-        dockTitle: "승인된 문서도 수정할 수 있어요", dockDetail: "수정하면 영향 검토 후 다시 승인받아요", actions: "" }));
-    cursor.style.left = "640px"; cursor.style.top = "300px";
-    await sleep(1600);
-    await click("#open");
-    $("#edit").innerHTML = `<div class="field">수정 요청<div class="compose focus" id="cmp"></div></div><div class="row-end" style="margin-top:8px"><button class="primary" id="sendc">수정 요청 보내기</button></div>`;
-    $("#rd").classList.add("sel");
-    await type($("#cmp"), X.request, 34);
-    await sleep(500);
-    await click("#sendc");
-    await sleep(400);
-    say("변경은 그 <b>원자에서 시작</b>합니다. 연결된 항목을 검토해 반영한 뒤, 바뀐 단계부터 다시 승인하고 검증합니다");
-    await sleep(2600);
-    ff(true, "×30");
-    for (const [d, st] of [[1, "REQ"], [2, "ARCH"], [3, "MOD"], [4, "VER"]]) {
-      shell({ done: d, active: d, tone: "you", title: `${st} 재승인`, sub: "전체 승인 대기" },
-        closeDesk(st, `<b>${st}</b>`, [st === "VER" ? `${X.newScenario.title} (새 시나리오)` : "변경된 항목"], st === "VER" ? X.newScenario.title : "변경 반영", [[st === "VER" ? X.newScenario.rule : X.reapprove, "변경"]], 1));
-      await sleep(350); await click("#approve"); await stamp("재승인");
-    }
-    const all = [...VER, { title: X.newScenario.title }], m = all.length;
-    shell({ done: 6, active: 6, tone: "run", title: "시나리오 실행", sub: "진행 중", clock: "00:48", view: "build" },
-      desk({ tone: "run", wide: true, eyebrow: '<span class="pulse"></span>AI 작업 중', crumbs: "<b>구현·검증</b>", title: "RTL 생성과 시뮬레이션",
-        body: `${MS(["done", "재생성 · 통과"], ["active", "진행·확인 중"])}<div id="area">${runsBody(m)}</div>`,
-        dockTitle: "시나리오별 테스트벤치 작성 · 빌드 · 실행", dockDetail: "변경된 기준으로 다시 실행해요", actions: "" }));
-    all.forEach((v, i) => addRun(i, v.title, "wait"));
-    const g = () => screen.querySelectorAll("#gauge i");
-    for (let i = 0; i < m; i++) { addRun(i, all[i].title, "run"); await sleep(240); addRun(i, all[i].title, "pass"); g()[i].className = "ok"; $("#tally").textContent = `통과 ${i + 1} / ${m}`; }
-    ff(false);
-    $("#tally").className = "chip pass";
-    screen.querySelectorAll(".milestone")[2].className = "milestone done"; $("#ms-sim").textContent = `전체 통과 · ${m}개`;
-    say(`변경 후에도 <b>${m}개 시나리오 모두 통과</b>`);
-    await sleep(1600);
-  }});
-  C.push({ name: "9. 그래프 보기", async run() {
-    await intro(9, "그래프 보기", "설계 기준 전체가 어떻게 연결돼 있는지 한눈에 봅니다");
+  C.push({ name: "8. 그래프 보기", async run() {
+    await intro(8, "그래프 보기", "설계 기준 전체가 어떻게 연결돼 있는지 한눈에 봅니다");
     const G = EX.graph;
     const W = 940, H = 440, X = [20, 260, 500, 720], NW = 196, NH = 30, Y0 = 50, DY = 52;
     const pos = {};
@@ -1013,7 +962,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); margi
     $("#sel").innerHTML = `<span class="chip" style="background:var(--you-soft);color:var(--you-ink)">선택 · ${esc(G.selLabel)}</span>`;
     say(G.selSay);
     await sleep(3600);
-    screen.insertAdjacentHTML("beforeend", `<div class="rp-end appear"><div class="rp-end-card"><span class="lab">원문 → 리스트 → 질문 → Close → EXPAND → RTL → 검증 · 복구 → 노드 수정 · 재검증 → 그래프</span><span class="seal">PASS</span>
+    screen.insertAdjacentHTML("beforeend", `<div class="rp-end appear"><div class="rp-end-card"><span class="lab">원문 → 리스트 → 질문 → Close → EXPAND → RTL → 검증 · 복구 → 그래프</span><span class="seal">PASS</span>
       <p>시연용 가상 예시입니다. 화면 구성과 작업 흐름은 HWD 하네스를 따르며, 일부 화면은 설명을 위해 단순화했습니다.</p></div></div>`);
     await sleep(5000);
   }});
